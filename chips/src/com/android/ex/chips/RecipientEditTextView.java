@@ -251,6 +251,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private int mActionBarHeight;
 
+    private boolean isScrolling = false;
+
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         setChipDimensions(context, attrs);
@@ -341,7 +343,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // When selection changes, see if it is inside the chips area.
         // If so, move the cursor back after the chips again.
         DrawableRecipientChip last = getLastChip();
-        if (last != null && start < getSpannable().getSpanEnd(last)) {
+        if (last != null && start < getSpannable().getSpanEnd(last)
+                && !isScrolling && mSelectedChip == null) {
             // Grab the last chip and set the cursor to after it.
             setSelection(Math.min(getSpannable().getSpanEnd(last) + 1, getText().length()));
         }
@@ -1413,10 +1416,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         boolean handled = super.onTouchEvent(event);
         int action = event.getAction();
         boolean chipWasSelected = false;
-        if (mSelectedChip == null) {
+        if (mSelectedChip == null || action == MotionEvent.ACTION_MOVE) {
             mGestureDetector.onTouchEvent(event);
         }
-        if (mCopyAddress == null && action == MotionEvent.ACTION_UP) {
+        if (mCopyAddress == null && action == MotionEvent.ACTION_UP && !isScrolling) {
             float x = event.getX();
             float y = event.getY();
             int offset = putOffsetInRange(getOffsetForPosition(x, y));
@@ -1426,10 +1429,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     if (mSelectedChip != null && mSelectedChip != currentChip) {
                         clearSelectedChip();
                         mSelectedChip = selectChip(currentChip);
+                        if(!shouldShowEditableText(mSelectedChip)) {
+                            setSelection(getSpannable().getSpanEnd(mSelectedChip));
+                        }
                     } else if (mSelectedChip == null) {
-                        setSelection(getText().length());
                         commitDefault();
                         mSelectedChip = selectChip(currentChip);
+                        if(!shouldShowEditableText(mSelectedChip)) {
+                            setSelection(getSpannable().getSpanEnd(mSelectedChip));
+                        }
                     } else {
                         onClick(mSelectedChip, offset, x, y);
                     }
@@ -1442,6 +1450,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
         if (action == MotionEvent.ACTION_UP && !chipWasSelected) {
             clearSelectedChip();
+        }
+        if(isScrolling && action == MotionEvent.ACTION_UP) {
+            isScrolling = false;
         }
         return handled;
     }
@@ -2684,6 +2695,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
         // Do nothing.
+        isScrolling = true;
         return false;
     }
 
@@ -2794,6 +2806,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     @Override
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
         // Do nothing.
+        isScrolling = true;
         return false;
     }
 
