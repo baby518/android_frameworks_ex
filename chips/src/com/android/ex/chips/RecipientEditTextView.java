@@ -883,7 +883,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
             if (mTemporaryRecipients != null && mTemporaryRecipients.size() > 0
                     && mTemporaryRecipients.size() <= RecipientAlternatesAdapter.MAX_LOOKUPS) {
-                if (hasFocus() || mTemporaryRecipients.size() < CHIP_LIMIT) {
+                if (hasFocus() || mTemporaryRecipients.size() <= CHIP_LIMIT) {
                     new RecipientReplacementTask().execute();
                     mTemporaryRecipients = null;
                 } else {
