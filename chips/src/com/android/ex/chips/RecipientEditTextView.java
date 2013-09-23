@@ -1313,7 +1313,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (mAlternatesPopup != null && mAlternatesPopup.isShowing()) {
                 mAlternatesPopup.dismiss();
             }
+            if (mAddressPopup != null && mAddressPopup.isShowing()) {
+                mAddressPopup.dismiss();
+            }
             removeChip(mSelectedChip);
+            return true;
         }
 
         switch (keyCode) {
@@ -2290,13 +2294,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     Editable editable = getText();
                     // Add the separator token.
                     int tokenStart = mTokenizer.findTokenStart(editable, selStart);
-                    int tokenEnd = mTokenizer.findTokenEnd(editable, tokenStart);
+                    int tokenEnd = start;
                     tokenEnd = tokenEnd + 1;
                     if (tokenEnd > editable.length()) {
                         tokenEnd = editable.length();
                     }
                     editable.delete(tokenStart, tokenEnd);
                     getSpannable().removeSpan(repl[0]);
+                    if (mAddressPopup != null && mAddressPopup.isShowing()) {
+                        mAddressPopup.dismiss();
+                    }
                 }
             } else if (count > before) {
                 if (mSelectedChip != null
