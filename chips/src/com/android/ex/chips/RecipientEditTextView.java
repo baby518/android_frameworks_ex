@@ -1395,6 +1395,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mSelectedChip != null) {
             unselectChip(mSelectedChip);
             mSelectedChip = null;
+
+            if (mAlternatesPopup != null && mAlternatesPopup.isShowing()) {
+                mAlternatesPopup.dismiss();
+            }
+
+            if (mAddressPopup != null && mAddressPopup.isShowing()) {
+                mAddressPopup.dismiss();
+            }
         }
         setCursorVisible(true);
     }
@@ -2212,6 +2220,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 }
                 if (mMoreChip != null) {
                     spannable.removeSpan(mMoreChip);
+                }
+                if (mSelectedChip != null) {
+                    clearSelectedChip();
                 }
                 return;
             }
