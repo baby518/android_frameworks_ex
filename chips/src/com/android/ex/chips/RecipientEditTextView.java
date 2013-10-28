@@ -83,6 +83,7 @@ import android.view.View.OnClickListener;
 import android.view.ViewParent;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
@@ -338,13 +339,19 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return last;
     }
 
+    private boolean isInFullMode() {
+        InputMethodManager imm = (InputMethodManager)
+                getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        return  imm != null && imm.isFullscreenMode();
+    }
+
     @Override
     public void onSelectionChanged(int start, int end) {
         // When selection changes, see if it is inside the chips area.
         // If so, move the cursor back after the chips again.
         DrawableRecipientChip last = getLastChip();
         if (last != null && start < getSpannable().getSpanEnd(last)
-                && !isScrolling && mSelectedChip == null) {
+                && !isScrolling && mSelectedChip == null && !isInFullMode()) {
             // Grab the last chip and set the cursor to after it.
             setSelection(Math.min(getSpannable().getSpanEnd(last) + 1, getText().length()));
         }
@@ -2305,6 +2312,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         commitByCharacter();
                         return;
                     }
+                }
+            } else if (before > count) {
+                //Some text has been deleted or replaced, need remove the span created before.
+                int selStart = getSelectionStart();
+                DrawableRecipientChip[] repl = getSpannable().getSpans(selStart, selStart,
+                        DrawableRecipientChip.class);
+                for (DrawableRecipientChip span : repl) {
+                    getSpannable().removeSpan(span);
                 }
             }
         }
