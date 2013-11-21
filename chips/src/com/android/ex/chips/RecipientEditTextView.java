@@ -1939,7 +1939,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     // That way, if there are duplicates, we always find the correct
                     // recipient.
                     chipStart = editable.toString().indexOf(token, end);
-                    end = chipEnd = Math.min(editable.length(), chipStart + token.length());
+                    end = chipEnd = Math.min(editable.length(), chipStart + token.length() + 1);
                     // Only set the span if we found a matching token.
                     if (chipStart != -1) {
                         editable.setSpan(chip, chipStart, chipEnd,
