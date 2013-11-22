@@ -1313,7 +1313,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (mAlternatesPopup != null && mAlternatesPopup.isShowing()) {
                 mAlternatesPopup.dismiss();
             }
+            if (mAddressPopup != null && mAddressPopup.isShowing()) {
+                mAddressPopup.dismiss();
+            }
             removeChip(mSelectedChip);
+            return true;
         }
 
         switch (keyCode) {
@@ -1939,7 +1943,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     // That way, if there are duplicates, we always find the correct
                     // recipient.
                     chipStart = editable.toString().indexOf(token, end);
-                    end = chipEnd = Math.min(editable.length(), chipStart + token.length());
+                    end = chipEnd = Math.min(editable.length(), chipStart + token.length() + 1);
                     // Only set the span if we found a matching token.
                     if (chipStart != -1) {
                         editable.setSpan(chip, chipStart, chipEnd,
@@ -2290,13 +2294,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     Editable editable = getText();
                     // Add the separator token.
                     int tokenStart = mTokenizer.findTokenStart(editable, selStart);
-                    int tokenEnd = mTokenizer.findTokenEnd(editable, tokenStart);
+                    int tokenEnd = start;
                     tokenEnd = tokenEnd + 1;
                     if (tokenEnd > editable.length()) {
                         tokenEnd = editable.length();
                     }
                     editable.delete(tokenStart, tokenEnd);
                     getSpannable().removeSpan(repl[0]);
+                    if (mAddressPopup != null && mAddressPopup.isShowing()) {
+                        mAddressPopup.dismiss();
+                    }
                 }
             } else if (count > before) {
                 if (mSelectedChip != null
