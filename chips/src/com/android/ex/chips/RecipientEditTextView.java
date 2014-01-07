@@ -1823,6 +1823,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     // Visible for testing.
     /*package*/ void createMoreChipPlainText() {
+        if (mMoreChip != null) {
+            Spannable span = getSpannable();
+            span.removeSpan(mMoreChip);
+            mMoreChip = null;
+        }
         // Take the first <= CHIP_LIMIT addresses and get to the end of the second one.
         Editable text = getText();
         int start = 0;
