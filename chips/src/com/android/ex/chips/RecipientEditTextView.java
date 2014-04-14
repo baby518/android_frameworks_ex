@@ -2325,7 +2325,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         return;
                     }
                 }
-            } else if (before > count) {
+            } else if (isInFullMode() && before > count) {
                 //Some text has been deleted or replaced, need remove the span created before.
                 int selStart = getSelectionStart();
                 DrawableRecipientChip[] repl = getSpannable().getSpans(selStart, selStart,
