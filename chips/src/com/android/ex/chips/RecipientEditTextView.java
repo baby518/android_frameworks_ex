@@ -498,6 +498,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         getSpannable().getSpans(start, end, DrawableRecipientChip.class);
                 if ((chips == null || chips.length == 0)) {
                     Editable text = getText();
+                    if(text.toString().trim().length() == 0) {
+                        text = new SpannableStringBuilder(text.toString().trim());
+                        setText(text.toString());
+                    }
                     int whatEnd = mTokenizer.findTokenEnd(text, start);
                     // This token was already tokenized, so skip past the ending token.
                     if (whatEnd < text.length() && text.charAt(whatEnd) == ',') {
