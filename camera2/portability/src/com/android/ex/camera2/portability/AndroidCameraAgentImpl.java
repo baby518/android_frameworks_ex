@@ -871,7 +871,8 @@ class AndroidCameraAgentImpl extends CameraAgent {
                     if (getCameraState().isInvalid()) {
                         return;
                     }
-                    mCameraState.waitForStates(AndroidCameraStateHolder.CAMERA_IDLE);
+                    mCameraState.waitForStates(AndroidCameraStateHolder.CAMERA_IDLE
+                            | AndroidCameraStateHolder.CAMERA_UNLOCKED);
                     mCameraHandler.obtainMessage(CameraActions.AUTO_FOCUS, afCallback)
                             .sendToTarget();
                 }
