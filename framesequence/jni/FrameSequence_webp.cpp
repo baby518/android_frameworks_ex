@@ -105,6 +105,10 @@ FrameSequence_webp::FrameSequence_webp(Stream* stream)
             return;
         }
         mData.size = CHUNK_HEADER_SIZE + readSize;
+        if(mData.size < RIFF_HEADER_SIZE) {
+            ALOGE("WebP file malformed");
+            return;
+        }
         mData.bytes = new uint8_t[mData.size];
         memcpy((void*)mData.bytes, riff_header, RIFF_HEADER_SIZE);
 
@@ -359,8 +363,8 @@ long FrameSequenceState_webp::drawFrame(int frameNr,
     // Return last frame's delay.
     const int frameCount = mFrameSequence.getFrameCount();
     const int lastFrame = (frameNr + frameCount - 1) % frameCount;
-    ok = WebPDemuxGetFrame(demux, lastFrame, &currIter);
-    ALOG_ASSERT(ok, "Could not retrieve frame# %d", lastFrame - 1);
+    ok = WebPDemuxGetFrame(demux, lastFrame + 1, &currIter);
+    ALOG_ASSERT(ok, "Could not retrieve frame# %d", lastFrame);
     const int lastFrameDelay = currIter.duration;
 
     WebPDemuxReleaseIterator(&currIter);
