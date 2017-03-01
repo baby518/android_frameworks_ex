@@ -38,8 +38,19 @@ public class RecipientEntry {
     /* package */ static final int INVALID_DESTINATION_TYPE = -1;
 
     public static final int ENTRY_TYPE_PERSON = 0;
+    //NoContact : To show No Contacts found
+    public static final int ENTRY_TYPE_SIZE = 3;
 
-    public static final int ENTRY_TYPE_SIZE = 1;
+    public static final int ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH = 1 ;
+
+    public static final int ENTRY_TYPE_NO_CONTACTS_FOUND = 2;
+
+    public static final RecipientEntry WAITING_FOR_DIRECTORY_SEARCH =
+            new RecipientEntry(ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH);
+
+    public static final RecipientEntry NO_CONTACTS_FOUND =
+            new RecipientEntry(ENTRY_TYPE_NO_CONTACTS_FOUND);
+    // End
 
     private final int mEntryType;
 
@@ -76,6 +87,23 @@ public class RecipientEntry {
 
     private final boolean mIsGalContact;
 
+    //NoContact : To show No Contacts found
+    private RecipientEntry(int entryType) {
+        mEntryType = entryType;
+        mIsFirstLevel = false;
+        mDisplayName = null;
+        mDestination = null;
+        mDestinationType = INVALID_DESTINATION_TYPE;
+        mDestinationLabel = null;
+        mContactId = -1;
+        mDataId = -1;
+        mPhotoThumbnailUri = null;
+        mPhotoBytes = null;
+        mIsDivider = true;
+        mIsValid = false;
+        mIsGalContact = false;
+    }
+    // End
     private RecipientEntry(int entryType, String displayName, String destination,
             int destinationType, String destinationLabel, long contactId, long dataId,
             Uri photoThumbnailUri, boolean isFirstLevel, boolean isValid, boolean isGalContact) {

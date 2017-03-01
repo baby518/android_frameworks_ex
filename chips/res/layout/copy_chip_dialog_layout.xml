@@ -14,10 +14,62 @@
      limitations under the License.
 -->
 
-<Button xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout  xmlns:android="http://schemas.android.com/apk/res/android"
+ android:layout_width="match_parent"
+ android:layout_height="wrap_content"
+ android:orientation="vertical">
+<Button
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:text="@string/copy_email"
     android:id="@+android:id/button1"
     android:background="@null"
     android:layout_gravity="left"/>
+
+    <TextView
+        android:id="@+id/text_dialog_title"
+        style="?android:attr/windowTitleStyle"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginLeft="@dimen/text_margin"
+        android:layout_marginRight="@dimen/text_margin"
+        android:ellipsize="end"
+        android:gravity="center_vertical|left"
+        android:singleLine="true"
+        android:textColor="@android:color/holo_blue_light"
+        android:textSize="@dimen/text_size" />
+
+    <View
+        android:id="@+id/titleDividerTop"
+        android:layout_width="match_parent"
+        android:layout_height="2dip"
+        android:background="@android:color/holo_blue_light" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:divider="?android:attr/dividerVertical"
+        android:orientation="vertical"
+        android:showDividers="middle" >
+
+        <Button
+            android:id="@+id/button_copy"
+            style="@style/ButtonAppearance.Widget" />
+
+        <Button
+            android:id="@+id/button_edit"
+            style="@style/ButtonAppearance.Widget"
+            android:text="@string/edit_email" />
+
+        <Button
+            android:id="@+id/button_delete"
+            style="@style/ButtonAppearance.Widget"
+            android:text="@string/delete_email" />
+
+        <Button
+            android:id="@+id/button_add"
+            style="@style/ButtonAppearance.Widget"
+            android:text="@string/add_to_contacts" />
+    </LinearLayout>
+
+</LinearLayout>
