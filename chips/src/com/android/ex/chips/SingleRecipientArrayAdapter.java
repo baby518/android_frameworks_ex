@@ -59,11 +59,6 @@ class SingleRecipientArrayAdapter extends ArrayAdapter<RecipientEntry> {
         display.setVisibility(View.VISIBLE);
         imageView.setVisibility(View.VISIBLE);
         TextView destination = (TextView) view.findViewById(android.R.id.text1);
-        Rfc822Token[] rFCTokens = Rfc822Tokenizer.tokenize(entry.getDestination());
-        if (rFCTokens.length == 0) {
-            destination.setText(entry.getDestination());
-        } else {
-            destination.setText(rFCTokens[0].getAddress());
-        }
+        destination.setText(Rfc822Tokenizer.tokenize(entry.getDestination())[0].getAddress());
     }
 }

@@ -55,7 +55,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringTokenizer;
 
+import com.android.ex.chips.RecipientEditTextView.StopSearchDirectoryListener;
 /**
  * Adapter for showing a recipient list.
  */
@@ -70,8 +72,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * exceeded if there are several directories configured, because we will use
      * the same limit for all directories.
      */
-    private static final int DEFAULT_PREFERRED_MAX_RESULT_COUNT = 10;
-
+    // To increase auto suggetsion no
+    private static final int DEFAULT_PREFERRED_MAX_RESULT_COUNT = 100;
+    // End
     /**
      * The number of extra entries requested to allow for duplicates. Duplicates
      * are removed from the overall result.
@@ -96,9 +99,23 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
     public static final int QUERY_TYPE_EMAIL = 0;
     public static final int QUERY_TYPE_PHONE = 1;
+    // constraint : To Start search after 3 character
+    //Constraint is taken care in Email app using setThreshold method
+    //private static final int CONSTRAINT_LENGTH = 2;
+    private static final String CONSTRAINT_TOKEN = ",";
+    // End
 
     private final Queries.Query mQuery;
     private final int mQueryType;
+
+    // NoContact : To show No Contacts found and waiting for directory search
+    private static final int MESSAGE_NO_CONTACT_DELAY = 1000;
+    private static final int MESSAGE_NO_CONTACT = 2;
+    private String tokenConstraint = new String();
+    private final String TAG_WAIT_DIR_SEARCH = "WaitingDirSearch";
+    private final String TAG_NO_MATCH = "NoMatches";
+    private final String TAG_ITEM_VIEW = "item";
+    // End
 
     /**
      * Model object for a {@link Directory} row.
@@ -226,76 +243,93 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             }
 
             final FilterResults results = new FilterResults();
-            Cursor defaultDirectoryCursor = null;
-            Cursor directoryCursor = null;
+            isSearchActive = true;
+            clearSearchNoContactEntry();
+            // constraint : To Start search after 3 character
+            tokenConstraint = getConstraint(constraint);
+            /*if (tokenConstraint.length() > CONSTRAINT_LENGTH) {*/// End
+                Cursor defaultDirectoryCursor = null;
+                Cursor directoryCursor = null;
+                if (TextUtils.isEmpty(constraint)) {
+                    clearTempEntries();
+                    // Return empty results.
+                    return results;
+                }
+                try {
+                    defaultDirectoryCursor = doQuery(constraint,
+                            mPreferredMaxResultCount, null);
 
-            if (TextUtils.isEmpty(constraint)) {
-                clearTempEntries();
-                // Return empty results.
-                return results;
-            }
-
-            try {
-                defaultDirectoryCursor = doQuery(constraint, mPreferredMaxResultCount, null);
-
-                if (defaultDirectoryCursor == null) {
-                    if (DEBUG) {
-                        Log.w(TAG, "null cursor returned for default Email filter query.");
-                    }
-                } else {
-                    // These variables will become mEntries, mEntryMap, mNonAggregatedEntries, and
-                    // mExistingDestinations. Here we shouldn't use those member variables directly
-                    // since this method is run outside the UI thread.
-                    final LinkedHashMap<Long, List<RecipientEntry>> entryMap =
-                            new LinkedHashMap<Long, List<RecipientEntry>>();
-                    final List<RecipientEntry> nonAggregatedEntries =
-                            new ArrayList<RecipientEntry>();
-                    final Set<String> existingDestinations = new HashSet<String>();
-
-                    while (defaultDirectoryCursor.moveToNext()) {
-                        // Note: At this point each entry doesn't contain any photo
-                        // (thus getPhotoBytes() returns null).
-                        putOneEntry(new TemporaryEntry(defaultDirectoryCursor,
-                                false /* isGalContact */),
-                                true, entryMap, nonAggregatedEntries, existingDestinations);
-                    }
-
-                    // We'll copy this result to mEntry in publicResults() (run in the UX thread).
-                    final List<RecipientEntry> entries = constructEntryList(
-                            entryMap, nonAggregatedEntries);
-
-                    // After having local results, check the size of results. If the results are
-                    // not enough, we search remote directories, which will take longer time.
-                    final int limit = mPreferredMaxResultCount - existingDestinations.size();
-                    final List<DirectorySearchParams> paramsList;
-                    if (limit > 0) {
+                    if (defaultDirectoryCursor == null) {
                         if (DEBUG) {
-                            Log.d(TAG, "More entries should be needed (current: "
-                                    + existingDestinations.size()
-                                    + ", remaining limit: " + limit + ") ");
+                            Log.w(TAG,
+                                    "null cursor returned for default Email filter query.");
                         }
-                        directoryCursor = mContentResolver.query(
-                                DirectoryListQuery.URI, DirectoryListQuery.PROJECTION,
-                                null, null, null);
-                        paramsList = setupOtherDirectories(mContext, directoryCursor, mAccount);
                     } else {
-                        // We don't need to search other directories.
-                        paramsList = null;
-                    }
+                        // These variables will become mEntries, mEntryMap,
+                        // mNonAggregatedEntries, and
+                        // mExistingDestinations. Here we shouldn't use those
+                        // member variables directly
+                        // since this method is run outside the UI thread.
+                        final LinkedHashMap<Long, List<RecipientEntry>> entryMap = new LinkedHashMap<Long, List<RecipientEntry>>();
+                        final List<RecipientEntry> nonAggregatedEntries = new ArrayList<RecipientEntry>();
+                        final Set<String> existingDestinations = new HashSet<String>();
 
-                    results.values = new DefaultFilterResult(
-                            entries, entryMap, nonAggregatedEntries,
-                            existingDestinations, paramsList);
-                    results.count = 1;
+                        while (defaultDirectoryCursor.moveToNext()) {
+                            // Note: At this point each entry doesn't contain
+                            // any photo
+                            // (thus getPhotoBytes() returns null).
+                            putOneEntry(
+                                    new TemporaryEntry(defaultDirectoryCursor,
+                                            false /* isGalContact */), true,
+                                    entryMap, nonAggregatedEntries,
+                                    existingDestinations);
+                        }
+
+                        // We'll copy this result to mEntry in publicResults()
+                        // (run in the UX thread).
+                        final List<RecipientEntry> entries = constructEntryList(
+                                false, entryMap, nonAggregatedEntries);
+
+                        // After having local results, check the size of
+                        // results. If the results are
+                        // not enough, we search remote directories, which will
+                        // take longer time.
+                        final int limit = mPreferredMaxResultCount
+                                - existingDestinations.size();
+                        final List<DirectorySearchParams> paramsList;
+                        if (limit > 0) {
+                            if (DEBUG) {
+                                Log.d(TAG,
+                                        "More entries should be needed (current: "
+                                                + existingDestinations.size()
+                                                + ", remaining limit: " + limit
+                                                + ") ");
+                            }
+                            directoryCursor = mContentResolver.query(
+                                    DirectoryListQuery.URI,
+                                    DirectoryListQuery.PROJECTION, null, null,
+                                    null);
+                            paramsList = setupOtherDirectories(mContext,
+                                    directoryCursor, mAccount);
+                        } else {
+                            // We don't need to search other directories.
+                            paramsList = null;
+                        }
+
+                        results.values = new DefaultFilterResult(entries,
+                                entryMap, nonAggregatedEntries,
+                                existingDestinations, paramsList);
+                        results.count = 1;
+                    }
+                } finally {
+                    if (defaultDirectoryCursor != null) {
+                        defaultDirectoryCursor.close();
+                    }
+                    if (directoryCursor != null) {
+                        directoryCursor.close();
+                    }
                 }
-            } finally {
-                if (defaultDirectoryCursor != null) {
-                    defaultDirectoryCursor.close();
-                }
-                if (directoryCursor != null) {
-                    directoryCursor.close();
-                }
-            }
+            //}
             return results;
         }
 
@@ -304,6 +338,11 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             // If a user types a string very quickly and database is slow, "constraint" refers to
             // an older text which shows inconsistent results for users obsolete (b/4998713).
             // TODO: Fix it.
+            // NoContact : To show No Contacts found : Only required in Email
+            if (getQueryType() == BaseRecipientAdapter.QUERY_TYPE_EMAIL) {
+                mNoContactMessageHandler.removeNoContactMessage();
+            }
+            // End
             mCurrentConstraint = constraint;
 
             clearTempEntries();
@@ -316,8 +355,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
                 // If there are no local results, in the new result set, cache off what had been
                 // shown to the user for use until the first directory result is returned
-                if (defaultFilterResult.entries.size() == 0 &&
-                        defaultFilterResult.paramsList != null) {
+                if (defaultFilterResult.entries.size() == 0
+                        && defaultFilterResult.paramsList != null
+                        && mCachedEntries.size() == 0) {
                     cacheCurrentEntries();
                 }
 
@@ -372,8 +412,15 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                         + ", constraint: " + constraint + ", thread: " + Thread.currentThread());
             }
             final FilterResults results = new FilterResults();
-            results.values = null;
-            results.count = 0;
+            // NoContact : To show No Contacts found : Only required in Email
+            if (getQueryType() == BaseRecipientAdapter.QUERY_TYPE_EMAIL) {
+                mNoContactMessageHandler.removeNoContactMessage();
+            } // End
+            // constraint : To Start search after 3 character
+            tokenConstraint = getConstraint(constraint);
+            //if (tokenConstraint.length() > CONSTRAINT_LENGTH) { // End
+                results.values = null;
+                results.count = 0;
 
             if (!TextUtils.isEmpty(constraint)) {
                 final ArrayList<TemporaryEntry> tempEntries = new ArrayList<TemporaryEntry>();
@@ -415,7 +462,12 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 Log.d(TAG, "DirectoryFilter#publishResult. constraint: " + constraint
                         + ", mCurrentConstraint: " + mCurrentConstraint);
             }
-            mDelayedMessageHandler.removeDelayedLoadMessage();
+            // NoContact : To show No Contacts found :Only required in Email
+            if (getQueryType() == BaseRecipientAdapter.QUERY_TYPE_EMAIL) {
+                mDelayedMessageHandler.removeDelayedLoadMessage();
+                mNoContactMessageHandler.removeNoContactMessage();
+            }
+            // End
             // Check if the received result matches the current constraint
             // If not - the user must have continued typing after the request was issued, which
             // means several member variables (like mRemainingDirectoryLoad) are already
@@ -439,7 +491,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                         Log.d(TAG, "Resend delayed load message. Current mRemainingDirectoryLoad: "
                                 + mRemainingDirectoryCount);
                     }
-                    mDelayedMessageHandler.sendDelayedLoadMessage();
+                    //Delay dialog is Only required in Email
+                    if (getQueryType() == BaseRecipientAdapter.QUERY_TYPE_EMAIL) {
+                        mDelayedMessageHandler.sendDelayedLoadMessage();
+                    }
                 }
 
                 // If this directory result has some items, or there are no more directories that
@@ -451,7 +506,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             }
 
             // Show the list again without "waiting" message.
-            updateEntries(constructEntryList(mEntryMap, mNonAggregatedEntries));
+            updateEntries(constructEntryList(false, mEntryMap, mNonAggregatedEntries));
         }
     }
 
@@ -508,7 +563,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         @Override
         public void handleMessage(Message msg) {
             if (mRemainingDirectoryCount > 0) {
-                updateEntries(constructEntryList(mEntryMap, mNonAggregatedEntries));
+                // NoContact : To show No Contacts found
+                updateEntries(constructEntryList(true, mEntryMap,
+                        mNonAggregatedEntries));
+                // End
             }
         }
 
@@ -660,17 +718,26 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         for (int i = 1; i < count; i++) {
             final DirectorySearchParams params = paramsList.get(i);
             params.constraint = constraint;
-            if (params.filter == null) {
-                params.filter = new DirectoryFilter(params);
+            // StopSearch : Not to start search if chip is committed
+            if (isSearchActive) { // end
+                if (params.filter == null) {
+                    params.filter = new DirectoryFilter(params);
+                }
+                params.filter.setLimit(limit);
+                params.filter.filter(constraint);
             }
-            params.filter.setLimit(limit);
-            params.filter.filter(constraint);
         }
 
         // Directory search started. We may show "waiting" message if directory results are slow
         // enough.
         mRemainingDirectoryCount = count - 1;
-        mDelayedMessageHandler.sendDelayedLoadMessage();
+        //Delay dialog is Only required in Email
+        if (getQueryType() == BaseRecipientAdapter.QUERY_TYPE_EMAIL) {
+            // To remove duplicate waiting for directory message
+            mDelayedMessageHandler.removeDelayedLoadMessage();
+            // End
+            mDelayedMessageHandler.sendDelayedLoadMessage();
+        }
     }
 
     private static void putOneEntry(TemporaryEntry entry, boolean isAggregatedEntry,
@@ -716,7 +783,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * fetch a cached photo for each contact entry (other than separators), or request another
      * thread to get one from directories.
      */
-    private List<RecipientEntry> constructEntryList(
+    //NoContact : To show No Contacts found flag added
+    private List<RecipientEntry> constructEntryList(boolean showMessageIfDirectoryLoadRemaining,
             LinkedHashMap<Long, List<RecipientEntry>> entryMap,
             List<RecipientEntry> nonAggregatedEntries) {
         final List<RecipientEntry> entries = new ArrayList<RecipientEntry>();
@@ -745,7 +813,15 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 validEntryCount++;
             }
         }
-
+        // NoContact : To show No Contacts found and waiting for directory
+        // search message
+        if (showMessageIfDirectoryLoadRemaining && mRemainingDirectoryCount > 0) {
+            entries.add(RecipientEntry.WAITING_FOR_DIRECTORY_SEARCH);
+        } else if (showMessageIfDirectoryLoadRemaining
+                && mRemainingDirectoryCount < 1 && entries.size() == 0) {
+            entries.add(RecipientEntry.NO_CONTACTS_FOUND);
+        }
+        // End
         return entries;
     }
 
@@ -760,9 +836,35 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
     /** Resets {@link #mEntries} and notify the event to its parent ListView. */
     private void updateEntries(List<RecipientEntry> newEntries) {
-        mEntries = newEntries;
-        mEntriesUpdatedObserver.onChanged(newEntries);
-        notifyDataSetChanged();
+        if (isSearchActive) {
+            //No Contact message is Only required in Email
+            if (getQueryType() == BaseRecipientAdapter.QUERY_TYPE_EMAIL) {
+                if ((newEntries.size() == 1)
+                        && (newEntries.get(0).getEntryType() == RecipientEntry.ENTRY_TYPE_NO_CONTACTS_FOUND
+                        || newEntries.get(0).getEntryType() == RecipientEntry.ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH)) {
+                    clearTempEntries();
+                } else if (mCachedEntries.size() > 0) {
+                    removeDuplicates();
+                    List<RecipientEntry> finalEntries = new ArrayList<RecipientEntry>(
+                            mFinalCacheList);
+                    finalEntries.addAll(newEntries);
+                    newEntries.clear();
+                    newEntries = finalEntries;
+                }
+            }
+            mEntries = newEntries;
+            mEntriesUpdatedObserver.onChanged(newEntries);
+            notifyDataSetChanged();
+            // NoContact : To show No Contacts found :Only required in Email
+            if (getQueryType() == BaseRecipientAdapter.QUERY_TYPE_EMAIL) {
+                if (mEntries.size() == 0) {
+                    mNoContactMessageHandler.sendNoContactMessage();
+                } else {
+                    mNoContactMessageHandler.removeNoContactMessage();
+                }
+            }
+        }
+        // End
     }
 
     private void cacheCurrentEntries() {
@@ -944,59 +1046,94 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         final RecipientEntry entry = getEntries().get(position);
-        String displayName = entry.getDisplayName();
-        String destination = entry.getDestination();
-        if (TextUtils.isEmpty(displayName) || TextUtils.equals(displayName, destination)) {
-            displayName = destination;
-
-            // We only show the destination for secondary entries, so clear it
-            // only for the first level.
-            if (entry.isFirstLevel()) {
-                destination = null;
+        // NoContact : To show No Contacts found and waiting for directorysearch
+        switch (entry.getEntryType()) {
+        case RecipientEntry.ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH: {
+            if (position == getEntries().size() - 1) {
+                View waitView = (convertView != null && convertView.getTag() == TAG_WAIT_DIR_SEARCH) ? convertView
+                        : mInflater.inflate(
+                                R.layout.chips_waiting_for_directory_search,
+                                parent, false);
+                waitView.setTag(TAG_NO_MATCH);
+                return waitView;
             }
+            return convertView;
         }
-
-        final View itemView = convertView != null ? convertView : mInflater.inflate(
-                getItemLayout(), parent, false);
-        final TextView displayNameView = (TextView) itemView.findViewById(getDisplayNameId());
-        final TextView destinationView = (TextView) itemView.findViewById(getDestinationId());
-        final TextView destinationTypeView = (TextView) itemView
-                .findViewById(getDestinationTypeId());
-        final ImageView imageView = (ImageView) itemView.findViewById(getPhotoId());
-        displayNameView.setText(displayName);
-        if (!TextUtils.isEmpty(destination)) {
-            destinationView.setText(destination);
-        } else {
-            destinationView.setText(null);
+        case RecipientEntry.ENTRY_TYPE_NO_CONTACTS_FOUND: {
+            if (position == 0) {
+                View NoContactView = (convertView != null && convertView
+                        .getTag() == TAG_NO_MATCH) ? convertView : mInflater
+                        .inflate(R.layout.chips_no_contacts_display, parent,
+                                false);
+                NoContactView.setTag(TAG_NO_MATCH);
+                return NoContactView;
+            }
+            return convertView;
         }
-        if (destinationTypeView != null) {
-            final CharSequence destinationType = mQuery
-                    .getTypeLabel(mContext.getResources(), entry.getDestinationType(),
-                            entry.getDestinationLabel()).toString().toUpperCase();
-
-            destinationTypeView.setText(destinationType);
-        }
-
-        if (entry.isFirstLevel()) {
-            displayNameView.setVisibility(View.VISIBLE);
-            if (imageView != null) {
-                imageView.setVisibility(View.VISIBLE);
-                final byte[] photoBytes = entry.getPhotoBytes();
-                if (photoBytes != null) {
-                    final Bitmap photo = BitmapFactory.decodeByteArray(photoBytes, 0,
-                            photoBytes.length);
-                    imageView.setImageBitmap(photo);
-                } else {
-                    imageView.setImageResource(getDefaultPhotoResource());
+        default: {
+            String displayName = entry.getDisplayName();
+            String destination = entry.getDestination();
+            if (TextUtils.isEmpty(displayName)
+                    || TextUtils.equals(displayName, destination)) {
+                displayName = destination;
+                // We only show the destination for secondary entries, so clear
+                // it
+                // only for the first level.
+                if (entry.isFirstLevel()) {
+                    destination = null;
                 }
             }
-        } else {
-            displayNameView.setVisibility(View.GONE);
-            if (imageView != null) {
-                imageView.setVisibility(View.INVISIBLE);
+
+            final View itemView = (convertView != null && convertView.getTag() == TAG_ITEM_VIEW) ? convertView
+                    : mInflater.inflate(getItemLayout(), parent, false);
+            final TextView displayNameView = (TextView) itemView
+                    .findViewById(getDisplayNameId());
+            final TextView destinationView = (TextView) itemView
+                    .findViewById(getDestinationId());
+            final TextView destinationTypeView = (TextView) itemView
+                    .findViewById(getDestinationTypeId());
+            final ImageView imageView = (ImageView) itemView
+                    .findViewById(getPhotoId());
+            displayNameView.setText(displayName);
+            if (!TextUtils.isEmpty(destination)) {
+                destinationView.setText(destination);
+            } else {
+                destinationView.setText(null);
             }
+            if (destinationTypeView != null) {
+                final CharSequence destinationType = mQuery
+                        .getTypeLabel(mContext.getResources(),
+                                entry.getDestinationType(),
+                                entry.getDestinationLabel()).toString()
+                        .toUpperCase();
+
+                destinationTypeView.setText(destinationType);
+            }
+
+            if (entry.isFirstLevel()) {
+                displayNameView.setVisibility(View.VISIBLE);
+                if (imageView != null) {
+                    imageView.setVisibility(View.VISIBLE);
+                    final byte[] photoBytes = entry.getPhotoBytes();
+                    if (photoBytes != null) {
+                        final Bitmap photo = BitmapFactory.decodeByteArray(
+                                photoBytes, 0, photoBytes.length);
+                        imageView.setImageBitmap(photo);
+                    } else {
+                        imageView.setImageResource(getDefaultPhotoResource());
+                    }
+                }
+            } else {
+                displayNameView.setVisibility(View.GONE);
+                if (imageView != null) {
+                    imageView.setVisibility(View.INVISIBLE);
+                }
+            }
+            itemView.setTag(TAG_ITEM_VIEW);
+            return itemView;
         }
-        return itemView;
+        }
+        // End
     }
 
     /**
@@ -1054,4 +1191,111 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     public Account getAccount() {
         return mAccount;
     }
+
+    // constraint : To Start search after 3 character
+    public String getConstraint(CharSequence constraint) {
+        if (constraint == null) {
+            return null;
+        }
+        String textConstraintToken = new String();
+        String tConstraint = constraint.toString();
+        StringTokenizer st = new StringTokenizer(tConstraint, CONSTRAINT_TOKEN,
+                false);
+        while (st.hasMoreTokens()) {
+            textConstraintToken = st.nextToken();
+        }
+        textConstraintToken = textConstraintToken.trim();
+        return textConstraintToken;
+    }
+
+    // End
+
+    // NoContact : To show No Contacts found
+    /**
+     * Handler to display and remove no contact message
+     */
+    private final class NoContactMessageHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            if (mRemainingDirectoryCount < 1) {
+                updateEntries(constructEntryList(true, mEntryMap,
+                        mNonAggregatedEntries));
+            }
+        }
+
+        public void sendNoContactMessage() {
+            sendMessageDelayed(obtainMessage(MESSAGE_NO_CONTACT, 0, 0, null),
+                    MESSAGE_NO_CONTACT_DELAY);
+        }
+
+        public void removeNoContactMessage() {
+            removeMessages(MESSAGE_NO_CONTACT);
+        }
+    }
+
+    private final NoContactMessageHandler mNoContactMessageHandler = new NoContactMessageHandler();
+
+    /**
+     * Clears no contact and waiting for more message from mEntries.
+     */
+    public void clearSearchNoContactEntry() {
+        if (mEntries != null
+                && mEntries.size() == 1
+                && (mEntries.get(0).getEntryType() == RecipientEntry.ENTRY_TYPE_NO_CONTACTS_FOUND || mEntries
+                        .get(0).getEntryType() == RecipientEntry.ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH)) {
+            mEntries.clear();
+        }
+    }
+
+    // End
+    // CacheEntry : To display cached entry
+
+    private static List<RecipientEntry> mCachedEntries = new ArrayList<RecipientEntry>();
+    private List<RecipientEntry> mFinalCacheList = new ArrayList<RecipientEntry>();
+
+    /**
+     * Saves the cache list from email app to merge it to suggestion list.
+     * @param tmp_list
+     *            : List containing all the cached entry
+     */
+    public void addCachedEmailAddress(List<String> tmp_list) {
+        Log.i(TAG,"Inside cached entry"+tmp_list.size());
+        mCachedEntries.clear();
+        for (String emailAddr : tmp_list) {
+            RecipientEntry entry = RecipientEntry.constructFakeEntry(emailAddr,
+                    true);
+            mCachedEntries.add(entry);
+        }
+    }
+
+    /**
+     * Remove duplicate from cache entry if that contact is already present in
+     * device list
+     */
+    private void removeDuplicates() {
+        Set<String> emailID = new HashSet<String>();
+        emailID.addAll(mExistingDestinations);
+        mFinalCacheList.clear();
+        for (RecipientEntry entry : mCachedEntries) {
+            if (emailID.add(entry.getDestination())) {
+                mFinalCacheList.add(entry);
+            }
+        }
+    }
+
+    // StopSearch : Not to start search if chip is committed
+    private static boolean isSearchActive = true;
+
+    public static StopSearchDirectoryListener getStopSearchDirectoryListener() {
+        return mStopSearchDirectoryListener;
+    }
+
+    private static StopSearchDirectoryListener mStopSearchDirectoryListener = new StopSearchDirectoryListener() {
+        @Override
+        public void stopSearch() {
+            isSearchActive = false;
+        }
+    };
+    // End
+
 }

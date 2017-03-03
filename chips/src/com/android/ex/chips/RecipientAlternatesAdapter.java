@@ -301,9 +301,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                 && (entry1.getPhotoThumbnailUri() == null && entry1.getPhotoBytes() == null)) {
             return entry2;
         }
-
-        // Go with the second option as a default
-        return entry2;
+        // Go with the first option as a default
+        return entry1;
     }
 
     private static Cursor doQuery(CharSequence constraint, int limit, Long directoryId,
