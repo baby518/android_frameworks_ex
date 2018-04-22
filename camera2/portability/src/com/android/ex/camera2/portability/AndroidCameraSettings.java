@@ -58,7 +58,7 @@ public class AndroidCameraSettings extends CameraSettings {
         setFlashMode(stringifier.flashModeFromString(params.getFlashMode()));
         setFocusMode(stringifier.focusModeFromString(params.getFocusMode()));
         setSceneMode(stringifier.sceneModeFromString(params.getSceneMode()));
-
+        setWhiteBalance(stringifier.whiteBalanceFromString(params.getWhiteBalance()));
         // Video capture.
         if (capabilities.supports(CameraCapabilities.Feature.VIDEO_STABILIZATION)) {
             setVideoStabilization(isVideoStabilizationEnabled());
