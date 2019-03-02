@@ -12,17 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-android_test {
-    name: "android-ex-camera2-portability-tests",
-    sdk_version: "current",
-    srcs: [
-        "src/**/*.java",
+android_app {
+
+    name: "FrameSequenceSample",
+    // java dependency
+    static_libs: ["android-common-framesequence"],
+    jni_libs: ["libframesequence"],
+    // proguard for framesequence library code
+    optimize: {
+        proguard_flags_files: ["proguard.flags"],
+    },
+    sdk_version: "19",
+    srcs: ["src/**/*.java"],
+    resource_dirs: ["res"],
+    aaptflags: [
+        "--auto-add-overlay",
+        "--extra-packages",
+        "com.android.framesequence.samples",
     ],
-    static_libs: [
-        "android-ex-camera2-portability",
-        "android-ex-camera2-utils",
-        "android-ex-camera2-utils-tests",
-        "androidx.test.rules",
-        "mockito-target-minus-junit4",
-    ],
+
 }
