@@ -60,6 +60,8 @@ public class AndroidCamera2Capabilities extends CameraCapabilities {
 
         // TODO: We only support JPEG image capture
         mSupportedPhotoSizes.addAll(Size.buildListFromAndroidSizes(Arrays.asList(
+                s.getHighResolutionOutputSizes(ImageFormat.JPEG))));
+        mSupportedPhotoSizes.addAll(Size.buildListFromAndroidSizes(Arrays.asList(
                 s.getOutputSizes(ImageFormat.JPEG))));
         mSupportedPhotoFormats.addAll(mSupportedPreviewFormats);
 
